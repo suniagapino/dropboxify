@@ -1,0 +1,235 @@
+#!/bin/sh
+# or #!/bin/dash (which doesn't have a dash.vim yet and I love colors)
+# POSIX shell compliant
+
+# converts a home directory to symlinks using Dropbox defaults
+
+DEFDROPBOX="$HOME/Dropbox"
+
+BIGSTUFF="
+    Desktop
+    Documents
+    Mail
+    Music
+    Videos
+    Public
+"
+
+UNIXSTUFF="
+    bin
+    .bash_profile
+    .profile
+    .bashrc
+"
+
+# pseudo-constants for readability
+true=true
+false=""
+success=0
+fail=1
+
+ask ()
+{
+    while true; do
+        printf "$1 [yn] "
+        IFS= read -r yn < /dev/tty
+        case "$yn" in
+            [Yy]* ) answer=yes; yes=$true; no=$false return $success ;;
+            [Nn]* ) answer=no; no=$true; yes=$false; return $fail ;;
+            * ) echo "Please answer yes or no.";;
+        esac
+    done
+}
+
+askfor ()
+{
+    while true; do
+        printf "$1 "
+        IFS= read -r answer < /dev/tty
+        if [ "$answer" ]; then 
+            break;
+        else
+            echo "Sorry, didn't catch that."
+        fi
+    done
+}
+
+detect_dropbox ()
+{
+    if [ -n "$1" ]; then
+        dropbox="$1"
+    else
+        dropbox="$DEFDROPBOX"
+    fi
+    echo -n "Let me look for your Dropbox ..."
+    if [ -d "$dropbox" ]; then
+        echo "yep, found $dropbox."
+        has_dropbox=$true
+        return $success
+    else
+        echo "nope."
+        has_dropbox=$false
+        dropbox=$false
+        return $fail
+    fi
+}
+
+ask_where_dropbox_lives ()
+{
+    while true; do 
+        askfor "Would you like to give me a hint?"
+        case "$answer" in
+            [Yy]* ) answer=yes; yes=$true; no=$false break;;
+            [Nn]* ) return $success ;; 
+            * ) echo "K, I'll look there ($answer)"; break;;
+        esac
+        detect_dropbox "$answer"
+    done
+}
+
+move_content ()
+{
+    from=$1
+    to=$2
+    mv "$from"/* "$to"
+    if [ $? != 0 ]; then
+        echo "Trouble moving '$from/*' to '$to' Check on this one."
+        return $fail
+    else
+        echo "Moved '$from/*' to '$to'."
+    fi
+}
+
+move ()
+{
+    from=$1
+    to=$2
+    mv "$from" "$to"
+    if [ $? != 0 ]; then
+        echo "Trouble moving '$from' to '$to' Check on this one."
+        return $fail 
+    else
+        echo "Moved '$from' to '$to'."
+    fi
+}
+
+remove_directory ()
+{
+    dir="$1"
+    rmdir "$dir"
+    if [ $? != 0 ]; then
+        echo "Trouble rmdir-ing '$dir/*'. Check on this one."
+        return $fail 
+    else
+        echo "Removed '$dir'."
+    fi
+}
+
+remove ()
+{
+    file="$1"
+    rm "$file"
+    if [ $? != 0 ]; then
+        echo "Trouble rm-ing '$file'. Check on this one."
+        return $fail 
+    else
+        echo "Removed '$file'."
+    fi
+}
+
+link ()
+{
+    from=$1
+    to=$2
+    ln -s "$to" "$from"
+    if [ $? != 0 ]; then
+        echo "Trouble creating '$from' link to '$to' Check it."
+        return $fail
+    else
+        echo "Replaced '$from' with a symbolic link to '$to'."
+    fi
+}
+
+move_content_and_link ()
+{
+    from=$1
+    to=$2
+    move_content "$from" "$to" \
+        && remove_directory "$from" \
+        && link "$from" "$to"
+}
+
+move_and_link ()
+{
+    from=$1
+    to=$2
+    move "$from" "$to" \
+        && remove "$from" \
+        && link "$from" "$to"
+}
+
+dropboxify ()
+{
+    # expects a string of lines
+    echo "$1" | while IFS= read -r this
+    do
+
+        ask "Move $this to $dropbox?"
+        [ $no ] && continue;
+
+        if [ -e "$dropbox/$this" ]; then
+            echo "Looks like $dropbox has this already."
+            if [ -d "$dropbox/$this" -a -d "$this" ]; then
+                move_content_and_link "$this" "$dropbox/$this"
+            else
+                echo "Yeah, skipping $this rather than overwriting it."
+                continue;
+            fi
+        else
+            [ $yes ] && move_and_link "$this" "$dropbox/$this"
+        fi
+
+        if [ $? != 0 ]; then
+            echo "Had trouble with '$this'. Try yourself later."
+            continue;
+        fi
+
+    done
+}
+
+if [ ! "$TESTING_FUNCTIONS" ]; then
+
+    echo "Not yet ready for production, still testing functions"
+
+#detect_dropbox
+#ask "Use $dropbox?"
+#if [ $no ]; then
+    #ask_where_dropbox_lives 
+#fi
+
+
+#dropboxify "`ls -1 foo`"
+
+#ask "Do you just want to move the big stuff? (Still approve each.) $BIGSTUFF"
+#if [ $yes ]; then
+#    STUFF="$STUFF $BIGSTUFF"
+#fi
+#
+#ask "What about the UNIX-ish stuff? $UNIXSTUFF"
+#if [ $yes ]; then
+#    STUFF="$STUFF $UNIXSTUFF"
+#fi
+#
+#dropboxify "$STUFF"
+
+
+#TODO
+#ask "What about the rest? Should I ask about each?"
+#[ $yes ] && ask_about_rest=yes
+
+#ask "Would you like to make links in your home directory to Dropbox stuff?"
+#if [ $yes ]; then
+#    whats_left
+#fi
+
+fi # TESTING_FUNCTIONS

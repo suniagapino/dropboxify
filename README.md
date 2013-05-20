@@ -34,6 +34,10 @@ everything in your `$HOME` directory and then everything in the Dropbox
 directory that you might like to add to your `$HOME` directory that isn't
 already there.
 
+The `dropbox` command provided by Dropbox has a nice exclude feature, but I
+was looking for an opt-in approach rather than pointing the `dropboxd` at 
+my precious $HOME directory and trying to remember to add excludes for
+every thing that gets added there.
 
 Conflicts
 =========

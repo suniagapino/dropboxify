@@ -1,0 +1,21 @@
+#!/bin/sh 
+# POSIX, written for /bin/dash (not /bin/bash)
+
+OK ()
+{
+    echo " $1 ... ok" 
+}
+
+FAIL ()
+{
+    echo " $1 ... ok" 
+}
+
+TESTING_FUNCTIONS=1; export TESTING_FUNCTIONS
+. ../dropboxify
+
+for testscript in test_*.sh; do 
+    echo "$testscript ..."
+    . ./$testscript
+done
+
